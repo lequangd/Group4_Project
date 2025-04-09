@@ -1,5 +1,11 @@
 package ca.sheridancollege.project;
 
+/**
+ * The class that handles information of the card
+ *
+ * @author Quang Dung Le April 2025
+ */
+
 public class UNOCard extends Card {
     // Enum for standard UNO card colors, including WILD
     public enum Color {

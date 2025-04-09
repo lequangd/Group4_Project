@@ -3,6 +3,12 @@ package ca.sheridancollege.project;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+/**
+ * The class that executes the game flow
+ *
+ * @author Quang Dung Le April 2025
+ */
+
 public class UNOGame extends Game {
     private UNODeck deck;
     private ArrayList<UNOCard> discardPile;

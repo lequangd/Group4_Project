@@ -3,6 +3,12 @@ package ca.sheridancollege.project;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
+/**
+ * The class that handles the effect of special cards (other than number)
+ *
+ * @author Quang Dung Le April 2025
+ */
+
 public class CardEffectHandler {
 
     /**

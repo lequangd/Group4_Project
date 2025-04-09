@@ -4,6 +4,12 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
+/**
+ * The class that handles the flow and information of the player
+ *
+ * @author Quang Dung Le April 2025
+ */
+
 public class UNOPlayer extends Player {
     private ArrayList<UNOCard> hand;
     private UNOGame game;

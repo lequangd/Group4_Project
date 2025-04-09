@@ -2,6 +2,12 @@ package ca.sheridancollege.project;
 
 import java.util.ArrayList;
 
+/**
+ * The class that handles the deck of cards that will be used to play
+ *
+ * @author Quang Dung Le April 2025
+ */
+
 public class UNODeck extends GroupOfCards {
 
     public UNODeck() {
