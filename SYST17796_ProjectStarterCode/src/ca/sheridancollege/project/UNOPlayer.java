@@ -14,29 +14,31 @@ public class UNOPlayer extends Player {
     private ArrayList<UNOCard> hand;
     private UNOGame game;
     private Scanner scanner;
-    private boolean hasCalledUno;
+    private boolean calledUno;
 
     public UNOPlayer(String name, UNOGame game, Scanner scanner) {
         super(name);
         this.hand = new ArrayList<>();
         this.game = game;
         this.scanner = scanner;
-        this.hasCalledUno = false;
+        this.calledUno = false;
     }
 
     /**
-     * Handles the logic for a player's turn: display hand, choose action (play/draw),
+     * Handles the logic for a player's turn: display hand, choose action
+     * (play/draw),
      * execute action. Called by the UNOGame loop.
      * 
-     * @return The card that was played, or null if the player drew or turn ended otherwise.
+     * @return The card that was played, or null if the player drew or turn ended
+     *         otherwise.
      */
     @Override
     public UNOCard play() {
-        // Check if game ended before turn starts, should not happen
+        // Check if game ended before turn starts
         if (game.isGameWon())
             return null;
 
-        displayHand(); // Show hand at start of turn
+        // displayHand(); // Show hand at start of turn
         UNOCard topCard = game.getTopCard();
         if (topCard == null) {
             System.out.println("Error: Discard pile empty during player's turn. Cannot play.");
@@ -115,14 +117,24 @@ public class UNOPlayer extends Player {
         // Check UNO status AFTER action, only if a card was successfully played
         if (cardPlayed != null) {
             if (hand.size() == 1) {
-                System.out.println("UNO! " + getName() + " has one card left!");
-                this.hasCalledUno = true;
-            } else {
-                this.hasCalledUno = false;
+                System.out.print("Do you want to call UNO? (yes/no): ");
+                String choice = "";
+                while (!choice.equals("yes") && !choice.equals("no")) {
+                    choice = scanner.nextLine().trim().toLowerCase();
+                    if (!choice.equals("yes") && !choice.equals("no"))
+                        System.out.print("   Please enter 'yes' or 'no': ");
+                }
+                if (choice.equals("yes")) {
+                    System.out.println("UNO! " + getName() + " has one card left!");
+                    this.calledUno = true;
+                } else {
+                    System.out.println("You chose not to call UNO.");
+                    this.calledUno = false;
+                }
             }
         }
 
-        return cardPlayed; // Return the played card
+        return cardPlayed;
     }
 
     /**
@@ -143,7 +155,7 @@ public class UNOPlayer extends Player {
     public void drawCard(UNOCard card) {
         if (card != null) {
             hand.add(card);
-            this.hasCalledUno = false;
+            this.calledUno = false;
         }
     }
 
@@ -157,16 +169,18 @@ public class UNOPlayer extends Player {
     }
 
     /**
-     * Checks if the player correctly called UNO on their previous turn if they had one card.
+     * Checks if the player correctly called UNO on their previous turn if they had
+     * one card.
      * 
-     * @return true if UNO was called or wasn't required, false if they missed the call.
+     * @return true if UNO was called or wasn't required, false if they missed the
+     *         call.
      */
-    public boolean hasCalledUno() {
-        return hasCalledUno;
+    public boolean getCalledUno() {
+        return calledUno;
     }
 
     public void setCalledUno(boolean called) {
-        this.hasCalledUno = called;
+        this.calledUno = called;
     }
 
     /**
@@ -178,7 +192,7 @@ public class UNOPlayer extends Player {
     private UNOCard playChosenCard(UNOCard cardToPlay) {
         System.out.println(getName() + " plays: " + cardToPlay);
         discardCard(cardToPlay); // Remove from hand
-        game.getDiscardPile().add(cardToPlay); // Add to discard pile
+        game.addToDiscardPile(cardToPlay); // Add to discard pile
         return cardToPlay;
     }
 
@@ -233,19 +247,18 @@ public class UNOPlayer extends Player {
         UNOCard.Color chosenWildColor = game.getCurrentColor(); // Get color if a Wild was played
 
         // Rule 1: Wild cards (Regular Wild, WD4) are always playable
-        if (cardToPlay.getColor() == UNOCard.Color.WILD) {
+        if (cardToPlay.getColor() == UNOCard.Color.WILD)
             return true;
-        }
 
         // Rule 2: Matching the currently chosen Wild color
-        if ((topDiscardCard.getType() == UNOCard.Type.WILD || topDiscardCard.getType() == UNOCard.Type.WILD_DRAW_FOUR) && chosenWildColor != null)
+        if ((topDiscardCard.getType() == UNOCard.Type.WILD || topDiscardCard.getType() == UNOCard.Type.WILD_DRAW_FOUR)
+                && chosenWildColor != null)
             return cardToPlay.getColor() == chosenWildColor;
 
         // Rule 3: Match on the actual top card (if it's NOT wild)
         // Match Color (and top card is not Wild)
-        if (cardToPlay.getColor() == topDiscardCard.getColor() && topDiscardCard.getColor() != UNOCard.Color.WILD) {
+        if (cardToPlay.getColor() == topDiscardCard.getColor() && topDiscardCard.getColor() != UNOCard.Color.WILD)
             return true;
-        }
 
         // Match Number (only Number cards)
         if (cardToPlay.getType() == UNOCard.Type.NUMBER && topDiscardCard.getType() == UNOCard.Type.NUMBER)
@@ -253,7 +266,8 @@ public class UNOPlayer extends Player {
                 return true;
 
         // Match Action Type (Skip, Reverse, Draw Two)
-        if (cardToPlay.getType() != UNOCard.Type.NUMBER && cardToPlay.getColor() != UNOCard.Color.WILD && cardToPlay.getType() == topDiscardCard.getType())
+        if (cardToPlay.getType() != UNOCard.Type.NUMBER && cardToPlay.getColor() != UNOCard.Color.WILD
+                && cardToPlay.getType() == topDiscardCard.getType())
             return true;
 
         // If no rules above match, it's not playable

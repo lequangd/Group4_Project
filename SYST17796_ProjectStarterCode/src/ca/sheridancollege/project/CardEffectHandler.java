@@ -8,165 +8,183 @@ import java.util.Scanner;
  *
  * @author Quang Dung Le April 2025
  */
-
 public class CardEffectHandler {
-
     /**
-     * Applies the effect of a played card
+     * Applies the effect of a played card by interacting with the UNOManager.
      *
      * @param cardPlayed
-     * @param game
+     * @param manager
      * @param playerWhoPlayed
      * @param sc
-     * @return true if the effect resulted in skipping the *next* player's turn, false otherwise.
+     * @return true if the effect resulted in skipping the NEXT player's turn, false otherwise.
      */
-    public static boolean applyEffect(UNOCard cardPlayed, UNOGame game, UNOPlayer playerWhoPlayed, Scanner sc) {
-        boolean turnSkipped = false;
+    public static boolean applyEffect(UNOCard cardPlayed, UNOManager manager, UNOPlayer playerWhoPlayed, Scanner sc) {
+        boolean turnSkipped = false; // Assume no skip initially
 
         switch (cardPlayed.getType()) {
             case SKIP:
-                turnSkipped = applySkipEffect(); // Returns true, skip
+                turnSkipped = applySkipEffect(); // Returns true, signals skip
                 break;
             case REVERSE:
                 // Returns true ONLY if it acts like a skip (2 players)
-                turnSkipped = applyReverseEffect(game);
+                turnSkipped = applyReverseEffect(manager);
                 break;
             case DRAW_TWO:
-                turnSkipped = applyDrawTwoEffect(game); // Returns true, skip
+                turnSkipped = applyDrawTwoEffect(manager); // returns true
                 break;
             case WILD:
-                applyWildEffect(game, playerWhoPlayed, sc); // Doesn't skip
+                applyWildEffect(manager, playerWhoPlayed, sc); // doesn't skip
                 break;
             case WILD_DRAW_FOUR:
-                // Returns true only if the next player is skipped
-                turnSkipped = applyWildDrawFourEffect(game, playerWhoPlayed, sc);
+                // Returns true only if the next player is ultimately skipped (after challenge)
+                turnSkipped = applyWildDrawFourEffect(manager, playerWhoPlayed, sc);
                 break;
-            default:
+            default: // NUMBER cards
                 break;
         }
-        if (game.isGameWon()) {
-            return true;
-        } // Prevent turn advancement if game ended during effect
+        // Check game state after effect applied
+        if (manager.isGameWon()) return true;
         return turnSkipped;
     }
 
+    /** Signals that a skip should occur. */
     private static boolean applySkipEffect() {
-        System.out.println("-> Effect: Skip card played! Skipping next player.");
-        return true; // A skip happened
+        System.out.println("Skip card played! Skipping next player.");
+        return true; // Signal skip
     }
 
-    private static boolean applyReverseEffect(UNOGame game) {
+    /*
+     * Applies Reverse effect, potentially signaling a skip in 2-player games.
+     */
+    private static boolean applyReverseEffect(UNOManager manager) {
         System.out.println("-> Effect: Reverse card played!");
-        int playerCount = game.getPlayers().size();
+        int playerCount = manager.getPlayerCount();
         if (playerCount == 2) {
             System.out.println("   (In 2-player game, Reverse acts like Skip!)");
-            return true; // A skip happened
+            return true; // Signal skip
         } else {
             System.out.println("   Reversing direction of play.");
-            game.setReversed(!game.isReversed());
+            manager.setIsReversed(!manager.getIsReversed());
             return false; // Doesn't skip in 3+ players
         }
     }
 
-    private static void applyWildEffect(UNOGame game, UNOPlayer currentPlayer, Scanner sc) {
+    /*
+     * Applies Wild effect (choosing color).
+     */
+    private static void applyWildEffect(UNOManager manager, UNOPlayer currentPlayer, Scanner sc) {
         System.out.println("-> Effect: Wild card played!");
         UNOCard.Color chosenColor = chooseColor(sc);
-        game.setCurrentColor(chosenColor);
+        manager.setCurrentColor(chosenColor);
         System.out.println("   " + currentPlayer.getName() + " chose " + chosenColor + ".");
     }
 
-    private static boolean applyDrawTwoEffect(UNOGame game) {
+    /** Applies Draw Two effect (next player draws 2, signals skip). */
+    private static boolean applyDrawTwoEffect(UNOManager manager) {
         System.out.println("-> Effect: Draw Two card played!");
-        UNOPlayer nextPlayer = (UNOPlayer) game.getNextPlayer();
+        UNOPlayer nextPlayer = (UNOPlayer) manager.getNextPlayer();
         System.out.println("   " + nextPlayer.getName() + " must draw 2 cards and is skipped.");
-        game.drawCardsForPlayer(nextPlayer, 2, true); // Draw the cards
-        if (game.isGameWon())
-            return true; // Check if game ended
-        return true; // A skip happened
+        manager.drawCardsForPlayer(nextPlayer, 2, true);
+        if (manager.isGameWon()) return true;
+        return true; // Signal skip
     }
 
-    private static boolean applyWildDrawFourEffect(UNOGame game, UNOPlayer playerWhoPlayedWD4, Scanner sc) {
+    /**
+     * Applies Wild Draw Four effect (challenge, draw 4/6, choose color, signals skip).
+     */
+    private static boolean applyWildDrawFourEffect(UNOManager manager, UNOPlayer playerWhoPlayedWD4, Scanner sc) {
         System.out.println("-> Effect: Wild Draw Four card played!");
-        UNOPlayer challenger = (UNOPlayer) game.getNextPlayer(); // Challenger is the next player
-        boolean skipNextPlayer = false;
+        UNOPlayer challenger = (UNOPlayer) manager.getNextPlayer();
+        boolean skipNextPlayer = false; // Flag to indicate skip status
 
-        boolean playedIllegally = checkWD4(game, playerWhoPlayedWD4);
+        boolean playedIllegally = checkWD4(manager, playerWhoPlayedWD4);
 
-        System.out.print("   " + challenger.getName() + ", do you want to challenge the Wild Draw Four? (yes/no): ");
+        System.out.print("   " + challenger.getName() + ", do you want to challenge? (yes/no): ");
         String choice = "";
         while (!choice.equals("yes") && !choice.equals("no")) {
             choice = sc.nextLine().trim().toLowerCase();
-            if (!choice.equals("yes") && !choice.equals("no"))
-                System.out.print("   Please enter 'yes' or 'no': ");
+            if (!choice.equals("yes") && !choice.equals("no")) System.out.print("   Please enter 'yes' or 'no': ");
         }
 
         if (choice.equals("yes")) {
+            // Challenge
             System.out.println("   Challenge initiated!");
             System.out.println("   " + playerWhoPlayedWD4.getName() + " reveals hand:");
             playerWhoPlayedWD4.displayHand();
 
             if (playedIllegally) {
-                // Challenged successfully.
+                // Challenge Successful! WD4 player draws 4. Turn proceeds normally.
                 System.out.println("   Challenge Won!");
                 System.out.println("   " + playerWhoPlayedWD4.getName() + " draws 4 cards.");
-                game.drawCardsForPlayer(playerWhoPlayedWD4, 4, true);
-                skipNextPlayer = false; // No skip, effect cancelled
+                manager.drawCardsForPlayer(playerWhoPlayedWD4, 4, true);
+                skipNextPlayer = false; // No skip
+                System.out.println("\n   " + playerWhoPlayedWD4.getName() + ", choose the color:");
+                UNOCard.Color chosenColor = chooseColor(sc);
+                manager.setCurrentColor(chosenColor);
+                System.out.println("   Color set to " + chosenColor + ".");
+                return skipNextPlayer;
             } else {
                 // Challenge Failed! Challenger draws 6 and IS skipped.
                 System.out.println("   Challenge Lost!");
                 System.out.println("   " + challenger.getName() + " draws 6 cards and is skipped!");
-                game.drawCardsForPlayer(challenger, 6, true);
-                if (game.isGameWon())
-                    return true; // Check end game
+                manager.drawCardsForPlayer(challenger, 6, true);
+                if (manager.isGameWon()) return true;
                 skipNextPlayer = true; // Challenger is skipped
-                System.out.println("\n   " + playerWhoPlayedWD4.getName() + ", choose the color after failed challenge:");
+                System.out.println("\n   " + playerWhoPlayedWD4.getName() + ", choose the color:");
                 UNOCard.Color chosenColor = chooseColor(sc);
-                game.setCurrentColor(chosenColor);
+                manager.setCurrentColor(chosenColor);
                 System.out.println("   Color set to " + chosenColor + ".");
+                return skipNextPlayer;
             }
         } else {
-            // No challenge
+            // No Challenge
             System.out.println("   No challenge made.");
             System.out.println("   " + challenger.getName() + " draws 4 cards and is skipped.");
-            game.drawCardsForPlayer(challenger, 4, true); // Challenger draws 4
-            skipNextPlayer = true; // Challenger is skipped
+            manager.drawCardsForPlayer(challenger, 4, true);
+            if (manager.isGameWon()) return true;
+            skipNextPlayer = true; // Challenger IS skipped
             System.out.println("\n   " + playerWhoPlayedWD4.getName() + ", choose the color:");
             UNOCard.Color chosenColor = chooseColor(sc);
-            game.setCurrentColor(chosenColor);
+            manager.setCurrentColor(chosenColor);
             System.out.println("   Color set to " + chosenColor + ".");
+            return skipNextPlayer;
         }
-        return skipNextPlayer;
     }
 
-    // Check if Wild Draw 4 was played legally
-    private static boolean checkWD4(UNOGame game, UNOPlayer playerWhoPlayedWD4) {
+    /*
+     * Check if WD4 was played legally
+     */
+    private static boolean checkWD4(UNOManager manager, UNOPlayer playerWhoPlayedWD4) {
         boolean playedIllegally = false;
         UNOCard cardBeforeWD4 = null;
-        if (game.getDiscardPile().size() >= 2)
-            cardBeforeWD4 = game.getDiscardPile().get(game.getDiscardPile().size() - 2);
+        // Access discard pile
+        if (manager.getDiscardPile().size() >= 2)
+            cardBeforeWD4 = manager.getDiscardPile().get(manager.getDiscardPile().size() - 2);
         if (cardBeforeWD4 != null) {
             UNOCard.Color requiredColor = cardBeforeWD4.getColor();
-            if (requiredColor == UNOCard.Color.WILD)
-                requiredColor = game.getCurrentColor();
-            if (requiredColor != null && requiredColor != UNOCard.Color.WILD) {
-                for (UNOCard cardInHand : playerWhoPlayedWD4.getHand()) {
+            // Access current color before WD4 was played
+            if (requiredColor == UNOCard.Color.WILD) requiredColor = manager.getCurrentColor();
+            if (requiredColor != null && requiredColor != UNOCard.Color.WILD)
+                for (UNOCard cardInHand : playerWhoPlayedWD4.getHand())
                     if (cardInHand.getColor() == requiredColor) {
                         playedIllegally = true;
                         break;
                     }
-                }
-            }
+                
+            
         }
         return playedIllegally;
     }
 
+    /*
+     * Prompts the user to choose a color (R, G, B, Y).
+     */
     public static UNOCard.Color chooseColor(Scanner sc) {
         while (true) {
-            System.out.print("Choose a color - Enter 1(Red), 2(Green), 3(Blue), 4(Yellow): ");
+            System.out.print("   Choose a color - Enter 1(Red), 2(Green), 3(Blue), 4(Yellow): ");
             try {
                 int choice = sc.nextInt();
-                if (sc.hasNextLine())
-                    sc.nextLine();
+                if (sc.hasNextLine()) sc.nextLine();
                 switch (choice) {
                     case 1:
                         return UNOCard.Color.RED;
@@ -177,10 +195,10 @@ public class CardEffectHandler {
                     case 4:
                         return UNOCard.Color.YELLOW;
                     default:
-                        System.out.println("Invalid choice.");
+                        System.out.println("   Invalid choice.");
                 }
             } catch (InputMismatchException e) {
-                System.out.println("Invalid input.");
+                System.out.println("   Invalid input.");
                 if (sc.hasNextLine())
                     sc.nextLine();
             }
